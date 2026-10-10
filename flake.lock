@@ -24,13 +24,13 @@
       "locked": {
         "lastModified": 1791644356,
         "narHash": "sha256-myYmrYdeFBkfRppHYwaJ9vDSgX1ibRjV9K+mzxezy5Q=",
-        "owner": "BitspendPayment",
+        "owner": "vtxos",
         "repo": "enclave-runtime",
         "rev": "c2ea60ea573ba294cd9a807a9bf3b174d78e7378",
         "type": "github"
       },
       "original": {
-        "owner": "BitspendPayment",
+        "owner": "vtxos",
         "repo": "enclave-runtime",
         "type": "github"
       }

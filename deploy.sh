@@ -34,7 +34,7 @@ out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 
 say "release $tag"
-gh release download "$tag" -R BitspendPayment/merlin-infra -D "$out/rel"
+gh release download "$tag" -R vtxos/merlin-infra -D "$out/rel"
 (cd "$out/rel" && sha256sum -c --quiet SHA256SUMS)
 chmod +x "$out/rel/merlin-platform"
 pcr0="$(jq -r .PCR0 "$out/rel/pcr.json")"
@@ -46,7 +46,7 @@ say "the cosigner's settings"
 source ~/.config/merlin/grid-sandbox.env
 runtime_rev="$(git -C "$here" show "$tag:flake.lock" | jq -r '.nodes["enclave-runtime"].locked.rev')"
 curl -fsSL -o "$out/guest-env.py" \
-    "https://raw.githubusercontent.com/BitspendPayment/enclave-runtime/$runtime_rev/deploy/qemu-nitro/guest-env.py"
+    "https://raw.githubusercontent.com/vtxos/enclave-runtime/$runtime_rev/deploy/qemu-nitro/guest-env.py"
 cp "$out/rel/cosigner.wasm" "$out/guest.wasm"
 python3 "$out/guest-env.py" "$out/guest.wasm" \
     ASP_URL=https://mutinynet.arkade.sh \
@@ -110,14 +110,14 @@ cp "$here"/host/* "$out/art/host/"
 # the units that start the enclave.
 for unit in enclave.service enclave-start.sh gvproxy.service gvproxy.yml nbdkit.service; do
     curl -fsSL -o "$out/art/host/units/$unit" \
-        "https://raw.githubusercontent.com/BitspendPayment/enclave-runtime/$runtime_rev/deploy/ami/units/$unit"
+        "https://raw.githubusercontent.com/vtxos/enclave-runtime/$runtime_rev/deploy/ami/units/$unit"
 done
 # What the app and the platform believe. No trust_root: a real enclave is checked against AWS's.
 jq -n --arg host "$domain" --arg pcr0 "$pcr0" --arg pcr16 "$pcr16" \
     --arg commit "$(git -C "$here" rev-list -n1 "$tag")" \
     --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     '{host: $host, pcr0: $pcr0, pcr16: $pcr16, rp_id: "vtxos.com",
-      repo: "https://github.com/BitspendPayment/merlin-infra", commit: $commit,
+      repo: "https://github.com/vtxos/merlin-infra", commit: $commit,
       timestamp: $timestamp}' > "$out/art/host/enclave-pins.json"
 aws s3 sync --delete --only-show-errors "$out/art/" "s3://$bucket/artifacts/"
 

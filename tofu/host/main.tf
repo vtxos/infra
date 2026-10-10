@@ -57,7 +57,7 @@ locals {
 # EIF's expectations of its parent (gvproxy's address map, IMDS hop limit) come
 # from the same tree.
 module "enclave" {
-  source = "git::https://github.com/BitspendPayment/enclave-runtime.git//deploy/tofu?ref=c2ea60ea573ba294cd9a807a9bf3b174d78e7378"
+  source = "git::https://github.com/vtxos/enclave-runtime.git//deploy/tofu?ref=c2ea60ea573ba294cd9a807a9bf3b174d78e7378"
 
   aws_profile       = "mpc-deployer"
   region            = "us-east-1"
