@@ -80,7 +80,9 @@ module "enclave" {
 }
 
 resource "aws_volume_attachment" "platform" {
-  device_name = "/dev/sdf"
+  # Not /dev/sdf: the v2 enclave module takes that for its ZFS pool volume. The
+  # platform volume is found by volume id (host/install.sh), so this name is free.
+  device_name = "/dev/sdg"
   volume_id   = local.base.platform_volume_id
   instance_id = module.enclave.instance_id
 }
