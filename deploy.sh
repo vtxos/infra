@@ -108,7 +108,7 @@ cp "$out/rel/merlin-platform" "$out/rel/gvproxy" "$out/art/bin/"
 cp "$here"/host/* "$out/art/host/"
 # The parent's side of the runtime, from the same commit as the image: gvproxy's address map and
 # the units that start the enclave.
-for unit in enclave.service enclave-start.sh gvproxy.service gvproxy.yml; do
+for unit in enclave.service enclave-start.sh gvproxy.service gvproxy.yml nbdkit.service; do
     curl -fsSL -o "$out/art/host/units/$unit" \
         "https://raw.githubusercontent.com/BitspendPayment/enclave-runtime/$runtime_rev/deploy/ami/units/$unit"
 done
