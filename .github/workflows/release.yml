@@ -41,7 +41,7 @@ jobs:
       - name: MerlinWallet at the pinned commit
         run: |
           . ./pins.env
-          git clone --quiet https://github.com/vtxos/MerlinWallet mw
+          git clone --quiet https://github.com/vtxos/wallet mw
           git -C mw checkout --quiet "$MERLINWALLET_REV"
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: wasm32-wasip2 }
