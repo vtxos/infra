@@ -6,7 +6,7 @@
   # PCR0 that anyone can rebuild:
   #
   #   nix build .#eif && jq -r .PCR0 result/pcr.json
-  inputs.enclave-runtime.url = "github:BitspendPayment/enclave-runtime";
+  inputs.enclave-runtime.url = "github:vtxos/enclave-runtime";
 
   outputs = { self, enclave-runtime }:
     let

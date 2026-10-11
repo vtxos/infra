@@ -20,7 +20,7 @@ Each release's image is built by this repository's CI from public sources, so an
 and compare:
 
 ```
-nix build github:BitspendPayment/merlin-infra/<tag>#eif && jq -r .PCR0 result/pcr.json
+nix build github:vtxos/merlin-infra/<tag>#eif && jq -r .PCR0 result/pcr.json
 ```
 
 The PCR0 published in the release notes must match. The image's settings are

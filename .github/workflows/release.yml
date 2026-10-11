@@ -23,7 +23,7 @@ jobs:
       - name: nix build .#eif
         run: |
           nix build .#eif -L --out-link result
-          mkdir -p out && cp result/s3fs.eif out/enclave.eif && cp result/pcr.json out/
+          mkdir -p out && cp result/enclave.eif out/enclave.eif && cp result/pcr.json out/
           jq -r '"PCR0 \(.PCR0)"' out/pcr.json
       # The parent's end of the vsock, static: the parent is stock Amazon Linux, no Nix.
       - name: nix build .#gvproxy
@@ -41,7 +41,7 @@ jobs:
       - name: MerlinWallet at the pinned commit
         run: |
           . ./pins.env
-          git clone --quiet https://github.com/BitspendPayment/MerlinWallet mw
+          git clone --quiet https://github.com/vtxos/wallet mw
           git -C mw checkout --quiet "$MERLINWALLET_REV"
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: wasm32-wasip2 }
@@ -68,7 +68,7 @@ jobs:
       - name: MerlinPlatform at the pinned commit, on the same MerlinWallet as the cosigner
         run: |
           . ./pins.env
-          git clone --quiet https://github.com/BitspendPayment/MerlinPlatform mp
+          git clone --quiet https://github.com/vtxos/MerlinPlatform mp
           git -C mp checkout --quiet "$MERLINPLATFORM_REV"
           pinned="$(grep -o 'MerlinWallet", rev = "[0-9a-f]*' mp/Cargo.toml | cut -d'"' -f3 | sort -u)"
           [ "$pinned" = "$MERLINWALLET_REV" ] || {
@@ -110,6 +110,6 @@ jobs:
             echo "- MerlinWallet: \`$MERLINWALLET_REV\`"
             echo "- MerlinPlatform: \`$MERLINPLATFORM_REV\`"
             echo
-            echo 'Rebuild the image: `nix build github:BitspendPayment/merlin-infra/${{ github.ref_name }}#eif && jq -r .PCR0 result/pcr.json`'
+            echo 'Rebuild the image: `nix build github:vtxos/merlin-infra/${{ github.ref_name }}#eif && jq -r .PCR0 result/pcr.json`'
           } > ../notes.md
           gh release create "${{ github.ref_name }}" --notes-file ../notes.md *

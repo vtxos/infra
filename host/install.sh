@@ -27,16 +27,18 @@ mkdir -p "$release"
 # plain sync skips a file whose size matches.
 aws s3 sync --delete --exact-timestamps --only-show-errors "s3://$bucket/artifacts/" "$release/"
 
-say "the parent: nitro-cli, the allocator, gvproxy and the enclave's units"
-# What enclave-runtime's deploy/ami would bake into an image, done here instead.
-rpm -q aws-nitro-enclaves-cli jq >/dev/null 2>&1 || dnf -y -q install aws-nitro-enclaves-cli jq
+say "the parent: nitro-cli, the allocator, gvproxy, nbdkit and the enclave's units"
+# What enclave-runtime's deploy/ami would bake into an image, done here instead. nbdkit serves the
+# pool's EBS volume to the enclave over vsock (stock, from the AL2023 repos — see nbdkit.service).
+rpm -q aws-nitro-enclaves-cli jq nbdkit-server nbdkit-basic-plugins >/dev/null 2>&1 \
+    || dnf -y -q install aws-nitro-enclaves-cli jq nbdkit-server nbdkit-basic-plugins
 # 2 vCPUs and 3 GiB for the enclave, the rest of the m6i.xlarge for the parent: the image is
 # ~170 MiB and the runtime's heap sits beside it.
 printf -- '---\nmemory_mib: 3072\ncpu_count: 2\n' > /etc/nitro_enclaves/allocator.yaml
 install -m 0755 "$release/bin/gvproxy" /usr/local/bin/gvproxy
 install -D -m 0644 "$release/host/units/gvproxy.yml" /etc/gvproxy/config.yml
 install -m 0644 "$release/host/units/gvproxy.service" "$release/host/units/enclave.service" \
-    /etc/systemd/system/
+    "$release/host/units/nbdkit.service" /etc/systemd/system/
 install -m 0755 "$release/host/units/enclave-start.sh" /usr/local/bin/enclave-start
 mkdir -p /opt/enclave /etc/systemd/system/enclave.service.d
 install -m 0644 "$release/eif/enclave.eif" "$release/eif/pcr.json" /opt/enclave/
@@ -80,12 +82,13 @@ install -o merlin -m 0644 "$release/host/enclave-pins.json" /srv/platform/enclav
 
 say "restarting"
 systemctl daemon-reload
-systemctl enable nitro-enclaves-allocator.service gvproxy.service enclave.service \
+systemctl enable nitro-enclaves-allocator.service gvproxy.service nbdkit.service enclave.service \
     merlin-platform.service caddy.service
 # The allocator takes its config only while no enclave holds its memory.
 systemctl stop enclave.service
-systemctl restart nitro-enclaves-allocator.service gvproxy.service
-# Onto the new image. The store is in S3, so the enclave resumes where it was.
+systemctl restart nitro-enclaves-allocator.service gvproxy.service nbdkit.service
+# Onto the new image. The store is on the pool's EBS volume (nbdkit over vsock); the anchors are in
+# S3, so the enclave resumes where it was.
 systemctl start enclave.service
 systemctl restart merlin-platform.service caddy.service
 systemctl --no-pager --lines=0 status enclave.service gvproxy.service merlin-platform.service \
