@@ -1,5 +1,6 @@
-# A release: the enclave image (with its PCR0), the cosigner and MerlinPlatform, built here from
-# public sources so anyone can rebuild them and compare. deploy.sh <tag> ships one.
+# A release: the enclave image (with its PCR0) and MerlinPlatform, built here from public sources
+# so anyone can rebuild them and compare, and the cosigner as vtxos/cosigner released it.
+# deploy.sh <tag> ships one.
 #
 # The cosigner is released bare. Its MutinyNet settings, one of them the Grid view token, are
 # written into it at deploy time, and PCR16 is measured then.
@@ -33,30 +34,20 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: eif, path: out/ }
 
+  # Not built here: vtxos/cosigner releases it, and this takes those exact bytes, refused unless
+  # they match pins.env. The same file the dev enclave image and enclave-runtime's CI serve.
   cosigner:
     name: cosigner
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: MerlinWallet at the pinned commit
+      - name: the pinned release
         run: |
           . ./pins.env
-          git clone --quiet https://github.com/vtxos/wallet mw
-          git -C mw checkout --quiet "$MERLINWALLET_REV"
-      - uses: dtolnay/rust-toolchain@stable
-        with: { targets: wasm32-wasip2 }
-      - name: protoc and wasi-sdk
-        run: |
-          sudo apt-get update -q && sudo apt-get install -y -q protobuf-compiler
-          # enclave-runtime's scripts/wasi-sdk.sh, pinned the same way.
-          curl -fsSL --retry 3 -o /tmp/wasi-sdk.tar.gz \
-            https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-25/wasi-sdk-25.0-x86_64-linux.tar.gz
-          echo "52640dde13599bf127a95499e61d6d640256119456d1af8897ab6725bcf3d89c  /tmp/wasi-sdk.tar.gz" | sha256sum -c -
-          mkdir -p ~/wasi-sdk && tar -xf /tmp/wasi-sdk.tar.gz -C ~/wasi-sdk --strip-components=1
-      - name: build
-        run: |
-          mw/scripts/build-cosigner-wasm.sh
-          mkdir -p out && cp mw/cosigner/target/wasm32-wasip2/release/cosigner.wasm out/
+          mkdir -p out
+          curl -fL --retry 3 --retry-all-errors -o out/cosigner.wasm \
+            "https://github.com/vtxos/cosigner/releases/download/$COSIGNER_RELEASE/cosigner.wasm"
+          echo "$COSIGNER_SHA256  out/cosigner.wasm" | sha256sum -c -
       - uses: actions/upload-artifact@v4
         with: { name: cosigner, path: out/ }
 
@@ -65,14 +56,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: MerlinPlatform at the pinned commit, on the same MerlinWallet as the cosigner
+      - name: MerlinPlatform at the pinned commit, on the same cosigner release
         run: |
           . ./pins.env
-          git clone --quiet https://github.com/vtxos/MerlinPlatform mp
+          git clone --quiet https://github.com/vtxos/platform mp
           git -C mp checkout --quiet "$MERLINPLATFORM_REV"
-          pinned="$(grep -o 'MerlinWallet", rev = "[0-9a-f]*' mp/Cargo.toml | cut -d'"' -f3 | sort -u)"
-          [ "$pinned" = "$MERLINWALLET_REV" ] || {
-            echo "MerlinPlatform builds against MerlinWallet $pinned, the cosigner is $MERLINWALLET_REV" >&2
+          pinned="$(grep -o 'vtxos/cosigner", tag = "[^"]*' mp/Cargo.toml | cut -d'"' -f3 | sort -u)"
+          [ "$pinned" = "$COSIGNER_RELEASE" ] || {
+            echo "MerlinPlatform builds against cosigner ${pinned:-(none)}, the release is $COSIGNER_RELEASE" >&2
             exit 1
           }
       # Static, so it runs on the parent's Amazon Linux whatever its glibc. rustls and ring, no
@@ -107,7 +98,7 @@ jobs:
             echo "PCR0 \`$(jq -r .PCR0 pcr.json)\`"
             echo
             echo "- enclave-runtime: \`$runtime_rev\` (flake.lock)"
-            echo "- MerlinWallet: \`$MERLINWALLET_REV\`"
+            echo "- cosigner: \`$COSIGNER_RELEASE\` (sha256 \`$COSIGNER_SHA256\`)"
             echo "- MerlinPlatform: \`$MERLINPLATFORM_REV\`"
             echo
             echo 'Rebuild the image: `nix build github:vtxos/merlin-infra/${{ github.ref_name }}#eif && jq -r .PCR0 result/pcr.json`'

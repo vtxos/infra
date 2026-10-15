@@ -3,3 +3,7 @@
 *_override.tf
 result
 result-*
+# dev-enclave/build.sh downloads these into the build context.
+dev-enclave/bundle/
+dev-enclave/bundle.tar.gz
+dev-enclave/cosigner.wasm
