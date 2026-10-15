@@ -1,0 +1,51 @@
+# The dev enclave image (dev-enclave/): vtxos/runtime's QEMU bundle, packed here from the commit
+# pins.env pins, and the released cosigner, for a wallet's e2e to run from compose. Booted here
+# before it is pushed, so an image that cannot serve never gets a digest anybody pins.
+name: Dev enclave image
+
+on:
+  push:
+    branches: [main]
+    paths: [pins.env, "dev-enclave/**", .github/workflows/dev-enclave-image.yml]
+  pull_request:
+    paths: [pins.env, "dev-enclave/**", .github/workflows/dev-enclave-image.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    # A cold Nix build of the enclave image, then a boot.
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      # Packing builds the image. KVM and vsock the runtime's prepare_enclave_host sets up.
+      - uses: DeterminateSystems/nix-installer-action@main
+      - name: Pack the runtime, fetch the cosigner, build
+        run: dev-enclave/build.sh dev-enclave:candidate
+      - name: Boot it, as compose.yml runs it
+        env:
+          DEV_ENCLAVE_IMAGE: dev-enclave:candidate
+        run: |
+          export ENCLAVE_DIR="$RUNNER_TEMP/enclave"
+          mkdir -p "$ENCLAVE_DIR"
+          docker compose -f dev-enclave/compose.yml up -d --wait --wait-timeout 1500 \
+            || { docker compose -f dev-enclave/compose.yml logs --tail 80; exit 1; }
+          docker compose -f dev-enclave/compose.yml down
+          [ -z "$(docker ps -q --filter label=enclave-harness=vtxos)" ] \
+            || { echo "down left the harness's containers running" >&2; exit 1; }
+      - name: Push
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          . ./pins.env
+          runtime="$(docker inspect -f '{{ index .Config.Labels "org.vtxos.runtime" }}' dev-enclave:candidate)"
+          image="ghcr.io/vtxos/dev-enclave:cosigner-$COSIGNER_RELEASE-runtime-$runtime"
+          docker tag dev-enclave:candidate "$image"
+          docker push "$image"
+          digest="$(docker inspect -f '{{ index .RepoDigests 0 }}' "$image")"
+          echo "pin: \`$digest\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "$digest"

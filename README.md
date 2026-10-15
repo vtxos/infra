@@ -1,6 +1,6 @@
 # merlin-infra
 
-Merlin's MutinyNet deployment. The MerlinWallet cosigner runs in a **real AWS Nitro enclave**
+Merlin's MutinyNet deployment. The [cosigner](https://github.com/vtxos/cosigner) runs in a **real AWS Nitro enclave**
 (enclave-runtime's production image), and MerlinPlatform runs on the same machine, on a c6i.xlarge
 in us-east-1 that is up only while it is needed.
 
@@ -51,7 +51,8 @@ There is no Elastic IP. Each start gets a new address, and `up.sh` points the na
 |---|---|
 | `deployment.nix` | what enclave-runtime's `mkEif` bakes into the image (its PCR0) |
 | `flake.nix`, `flake.lock` | the image, from the runtime commit the lock pins |
-| `pins.env` | the MerlinWallet and MerlinPlatform commits a release builds from |
+| `pins.env` | the cosigner release and MerlinPlatform commit a release ships, and the dev enclave image's inputs |
+| `dev-enclave/` | the dev enclave image a wallet's e2e boots from compose: vtxos/runtime's QEMU bundle, packed from the commit `pins.env` pins, and the released cosigner, built and pushed by `.github/workflows/dev-enclave-image.yml` |
 | `.github/workflows/release.yml` | on a `v*` tag: enclave.eif + pcr.json, gvproxy, cosigner.wasm, merlin-platform |
 | `tofu/base` | what outlives machines: the store buckets (roots under Object Lock), the KMS key, the push application, the platform volume, the artifacts and pins bucket |
 | `tofu/host` | the machine: enclave-runtime's `deploy/tofu`, plus the platform's ports and volume, and the role's extra grants |

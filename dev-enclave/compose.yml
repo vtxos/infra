@@ -1,0 +1,30 @@
+# How the dev enclave runs. A consumer (the wallet's docker-compose.enclave.yml) copies this with
+# the image pinned by digest; here DEV_ENCLAVE_IMAGE picks it, for build.sh's output.
+#
+#   ENCLAVE_DIR=$PWD/.enclave-run docker compose -f dev-enclave/compose.yml up -d --wait
+#
+# The host needs KVM, Docker and `modprobe vsock_loopback`. Dev only: the Docker socket and the
+# host network make this container root on the host.
+services:
+  enclave:
+    image: ${DEV_ENCLAVE_IMAGE:-dev-enclave:local}
+    # The harness's QEMU, MinIO and Pebble are containers of the host's Docker, so it gets the
+    # socket, and they bind-mount by host path, so ENCLAVE_DIR is mounted at its own path. Host
+    # networking: the enclave serves on 127.0.0.1:8443, and the guest reaches this host's services
+    # (arkd, an escrow service) through gvproxy at 192.168.127.254, as with dev-enclave.sh itself.
+    network_mode: host
+    # So `down` reaches the harness, whose exit trap stops the containers it started.
+    init: true
+    stop_grace_period: 60s
+    devices: [/dev/kvm, /dev/vsock]
+    # The parent-side services speak AF_VSOCK, a socket family Docker's default seccomp profile
+    # refuses. Unconfined costs nothing here: the Docker socket already makes this root on the host.
+    security_opt: [seccomp:unconfined]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${ENCLAVE_DIR:?an absolute host directory}:${ENCLAVE_DIR}
+    environment:
+      ENCLAVE_DIR: ${ENCLAVE_DIR}
+      GUEST_ENV: ${GUEST_ENV:-}
+      GUEST: ${GUEST:-}
+      ZFS_SIZE: ${ZFS_SIZE:-4G}
