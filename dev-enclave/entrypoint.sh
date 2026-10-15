@@ -15,6 +15,8 @@ if ! cmp -s /enclave/image.env "$bundle/image.env" 2>/dev/null; then
     echo "copying the bundle into $bundle"
     rm -rf "$bundle"
     cp -a /enclave "$bundle"
+    # Ours is root; the directory is the host user's, who must be able to clear it.
+    chmod -R a+rwX "$bundle"
 fi
 
 # The run directory is the e2e's too: it enrols its passkeys there, as whoever runs it on the host.

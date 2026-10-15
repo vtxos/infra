@@ -1,6 +1,6 @@
-# The dev enclave image (dev-enclave/): enclave-runtime's QEMU bundle and the released cosigner,
-# both as pins.env pins them, for a wallet's e2e to run from compose. Booted here before it is
-# pushed, so an image that cannot serve never gets a digest anybody pins.
+# The dev enclave image (dev-enclave/): vtxos/runtime's QEMU bundle, packed here from the commit
+# pins.env pins, and the released cosigner, for a wallet's e2e to run from compose. Booted here
+# before it is pushed, so an image that cannot serve never gets a digest anybody pins.
 name: Dev enclave image
 
 on:
@@ -18,22 +18,14 @@ permissions:
 jobs:
   image:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # A cold Nix build of the enclave image, then a boot.
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
-      - name: Build
+      # Packing builds the image. KVM and vsock the runtime's prepare_enclave_host sets up.
+      - uses: DeterminateSystems/nix-installer-action@main
+      - name: Pack the runtime, fetch the cosigner, build
         run: dev-enclave/build.sh dev-enclave:candidate
-      # What enclave-runtime's CI does on the same runners: /dev/kvm exists but is root-owned, and
-      # the harness forwards the enclave's vsock to host loopback.
-      - name: Let the runner open KVM, and load the vsock loopback transport
-        run: |
-          if [ -e /dev/kvm ] && [ ! -r /dev/kvm ]; then
-            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
-              | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
-            sudo udevadm control --reload-rules
-            sudo udevadm trigger --name-match=kvm
-          fi
-          [ -e /dev/vsock ] || sudo modprobe vsock_loopback
       - name: Boot it, as compose.yml runs it
         env:
           DEV_ENCLAVE_IMAGE: dev-enclave:candidate

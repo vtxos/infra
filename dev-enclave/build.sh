@@ -1,28 +1,33 @@
 #!/usr/bin/env bash
-# Build the dev enclave image from what pins.env pins: enclave-runtime's dev bundle and the released
-# cosigner, each refused unless its sha256 matches.
+# Build the dev enclave image from what pins.env pins: vtxos/runtime at a commit, packed here into
+# its QEMU dev bundle, and the released cosigner, refused unless its sha256 matches.
 #
 #   dev-enclave/build.sh [tag]      default dev-enclave:local
+#
+# Packing builds the enclave image, so this needs what that needs: Nix, cargo and Docker, and KVM
+# and vsock for what prepare_enclave_host sets up.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ../pins.env
 tag="${1:-dev-enclave:local}"
 
-# url sha256 file: kept when it already matches, fetched and checked when it does not.
-fetch() {
-    if [[ -f "$3" ]] && echo "$2  $3" | sha256sum -c --status -; then return; fi
-    curl -fL --retry 3 --retry-all-errors -o "$3.part" "$1"
-    echo "$2  $3.part" | sha256sum -c -
-    mv "$3.part" "$3"
-}
-fetch "https://github.com/vtxos/enclave-runtime/releases/download/$DEV_ENCLAVE_RELEASE/$DEV_ENCLAVE_RELEASE.tar.gz" \
-    "$DEV_ENCLAVE_SHA256" bundle.tar.gz
-fetch "https://github.com/vtxos/cosigner/releases/download/$COSIGNER_RELEASE/cosigner.wasm" \
-    "$COSIGNER_SHA256" cosigner.wasm
+# The runtime at the pinned commit, packed with no image options: the bundle carries nothing of
+# any guest's, which is given its settings when it boots.
+[[ -d runtime/.git ]] || git clone -q https://github.com/vtxos/runtime runtime
+git -C runtime fetch -q origin "$DEV_RUNTIME_REV"
+git -C runtime checkout -q --detach "$DEV_RUNTIME_REV"
+(cd runtime && rustup show >/dev/null)   # its rust-toolchain.toml, installed
+bash -c '. runtime/scripts/lib.sh && prepare_enclave_host'
+runtime/deploy/qemu-nitro/dev-enclave.sh --name pack --pack "$PWD/bundle"
 
-rm -rf bundle && mkdir bundle && tar xzf bundle.tar.gz -C bundle --strip-components=1
+if ! { [[ -f cosigner.wasm ]] && echo "$COSIGNER_SHA256  cosigner.wasm" | sha256sum -c --status -; }; then
+    curl -fL --retry 3 --retry-all-errors -o cosigner.wasm.part \
+        "https://github.com/vtxos/cosigner/releases/download/$COSIGNER_RELEASE/cosigner.wasm"
+    echo "$COSIGNER_SHA256  cosigner.wasm.part" | sha256sum -c -
+    mv cosigner.wasm.part cosigner.wasm
+fi
+
 runtime="$(. bundle/image.env; echo "$ENCLAVE_RUNTIME_REV")"
-
 docker build -t "$tag" \
     --label "org.vtxos.runtime=$runtime" --label "org.vtxos.cosigner=$COSIGNER_RELEASE" .
-echo "$tag: enclave-runtime $runtime, cosigner $COSIGNER_RELEASE"
+echo "$tag: runtime $runtime, cosigner $COSIGNER_RELEASE"

@@ -1,4 +1,4 @@
-bundle.tar.gz
+runtime
 *.part
 compose.yml
 build.sh

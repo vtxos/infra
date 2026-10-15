@@ -1,6 +1,6 @@
-# The dev enclave a wallet's e2e boots: enclave-runtime's QEMU dev bundle and the released
-# cosigner, in one image. build.sh fetches both as pins.env pins them; compose.yml is how it runs,
-# and says why it runs that way.
+# The dev enclave a wallet's e2e boots: vtxos/runtime's QEMU dev bundle and the released cosigner,
+# in one image. build.sh packs the one and fetches the other, as pins.env pins them; compose.yml is
+# how it runs, and says why it runs that way.
 FROM docker:27.5.1-cli AS docker
 
 # glibc, for the bundle's host binaries (built on 22.04). The rest is what the harness calls.
