@@ -17,7 +17,10 @@ permissions:
 
 jobs:
   image:
-    runs-on: ubuntu-latest
+    # 22.04, not latest, on purpose: the bundle's host binaries (passkey-client, nitro-attest,
+    # vhost-device-vsock) link the runner's glibc and run on the e2e's host, outside the image.
+    # What 22.04 builds runs on 22.04 and newer; what 24.04 builds needs glibc 2.38.
+    runs-on: ubuntu-22.04
     # A cold Nix build of the enclave image, then a boot.
     timeout-minutes: 150
     steps:
