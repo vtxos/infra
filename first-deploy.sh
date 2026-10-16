@@ -18,7 +18,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$here"
 export AWS_PROFILE=mpc-deployer AWS_REGION=us-east-1
 tag="${1:?usage: first-deploy.sh <tag>  (e.g. v3)}"
-repo=vtxos/merlin-infra
+repo=vtxos/infra
 
 say()  { printf '\n== %s ==\n' "$*"; }
 base() { tofu -chdir="$here/tofu/base" output -raw "$1"; }
