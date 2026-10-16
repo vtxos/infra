@@ -101,6 +101,6 @@ jobs:
             echo "- cosigner: \`$COSIGNER_RELEASE\` (sha256 \`$COSIGNER_SHA256\`)"
             echo "- MerlinPlatform: \`$MERLINPLATFORM_REV\`"
             echo
-            echo 'Rebuild the image: `nix build github:vtxos/merlin-infra/${{ github.ref_name }}#eif && jq -r .PCR0 result/pcr.json`'
+            echo 'Rebuild the image: `nix build github:vtxos/infra/${{ github.ref_name }}#eif && jq -r .PCR0 result/pcr.json`'
           } > ../notes.md
           gh release create "${{ github.ref_name }}" --notes-file ../notes.md *

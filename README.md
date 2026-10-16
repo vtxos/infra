@@ -1,6 +1,6 @@
-# merlin-infra
+# infra
 
-Merlin's MutinyNet deployment. The [cosigner](https://github.com/vtxos/cosigner) runs in a **real AWS Nitro enclave**
+The vtxos MutinyNet deployment. The [cosigner](https://github.com/vtxos/cosigner) runs in a **real AWS Nitro enclave**
 (enclave-runtime's production image), and MerlinPlatform runs on the same machine, on a c6i.xlarge
 in us-east-1 that is up only while it is needed.
 
@@ -20,7 +20,7 @@ Each release's image is built by this repository's CI from public sources, so an
 and compare:
 
 ```
-nix build github:vtxos/merlin-infra/<tag>#eif && jq -r .PCR0 result/pcr.json
+nix build github:vtxos/infra/<tag>#eif && jq -r .PCR0 result/pcr.json
 ```
 
 The PCR0 published in the release notes must match. The image's settings are
