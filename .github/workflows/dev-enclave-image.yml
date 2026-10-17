@@ -29,17 +29,20 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - name: Pack the runtime, fetch the cosigner, build
         run: dev-enclave/build.sh dev-enclave:candidate
-      - name: Boot it, as compose.yml runs it
+      - name: Boot each bundle, as compose.yml runs it
         env:
           DEV_ENCLAVE_IMAGE: dev-enclave:candidate
         run: |
           export ENCLAVE_DIR="$RUNNER_TEMP/enclave"
           mkdir -p "$ENCLAVE_DIR"
-          docker compose -f dev-enclave/compose.yml up -d --wait --wait-timeout 1500 \
-            || { docker compose -f dev-enclave/compose.yml logs --tail 80; exit 1; }
-          docker compose -f dev-enclave/compose.yml down
-          [ -z "$(docker ps -q --filter label=enclave-harness=vtxos)" ] \
-            || { echo "down left the harness's containers running" >&2; exit 1; }
+          for bundle in "" app; do
+            echo "== the ${bundle:-default} bundle"
+            ENCLAVE_BUNDLE="$bundle" docker compose -f dev-enclave/compose.yml up -d --wait --wait-timeout 1500 \
+              || { docker compose -f dev-enclave/compose.yml logs --tail 80; exit 1; }
+            docker compose -f dev-enclave/compose.yml down
+            [ -z "$(docker ps -q --filter label=enclave-harness=vtxos)" ] \
+              || { echo "down left the harness's containers running" >&2; exit 1; }
+          done
       - name: Push
         if: github.event_name != 'pull_request'
         run: |

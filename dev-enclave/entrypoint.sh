@@ -10,11 +10,17 @@
 set -euo pipefail
 
 dir="${ENCLAVE_DIR:?mount a host directory at the same path inside, and name it in ENCLAVE_DIR}"
+# ENCLAVE_BUNDLE=app: the image built for the wallet's app, whose relying party is vtxos.com.
+case "${ENCLAVE_BUNDLE:-}" in
+    "") image=/enclave ;;
+    app) image=/enclave-app ;;
+    *) echo "ENCLAVE_BUNDLE is app or unset, not $ENCLAVE_BUNDLE" >&2; exit 1 ;;
+esac
 bundle="$dir/bundle"
-if ! cmp -s /enclave/image.env "$bundle/image.env" 2>/dev/null; then
+if ! cmp -s "$image/image.env" "$bundle/image.env" 2>/dev/null; then
     echo "copying the bundle into $bundle"
     rm -rf "$bundle"
-    cp -a /enclave "$bundle"
+    cp -a "$image" "$bundle"
     # Ours is root; the directory is the host user's, who must be able to clear it.
     chmod -R a+rwX "$bundle"
 fi

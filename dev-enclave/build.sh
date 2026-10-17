@@ -19,6 +19,13 @@ git -C runtime checkout -q --detach "$DEV_RUNTIME_REV"
 (cd runtime && rustup show >/dev/null)   # its rust-toolchain.toml, installed
 bash -c '. runtime/scripts/lib.sh && prepare_enclave_host'
 runtime/deploy/qemu-nitro/dev-enclave.sh --name pack --pack "$PWD/bundle"
+# And again for the wallet's app, which a passkey is created for on an Android emulator: Android's
+# relying party is vtxos.com, and the app claims the origin of the key its APK is signed with — the
+# wallet's checked-in debug keystore, and its release key. The image fixes both, so they are a
+# second bundle, which ENCLAVE_BUNDLE=app boots. The same as the wallet's `make up` builds.
+runtime/deploy/qemu-nitro/dev-enclave.sh --name pack-app --pack "$PWD/bundle-app" --rp-id vtxos.com \
+    --allowed-origin android:apk-key-hash:Lf1QIwQnlPBYPwDFhloUkYC-0tYAKSpKCQbEiyz118s \
+    --allowed-origin android:apk-key-hash:u1pNepeObJUpSkSqH964HvFRqbhC_ejQP3GHA3-lreI
 
 if ! { [[ -f cosigner.wasm ]] && echo "$COSIGNER_SHA256  cosigner.wasm" | sha256sum -c --status -; }; then
     curl -fL --retry 3 --retry-all-errors -o cosigner.wasm.part \
