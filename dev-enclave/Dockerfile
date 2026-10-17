@@ -1,5 +1,5 @@
 # The dev enclave a wallet's e2e boots: vtxos/runtime's QEMU dev bundle and the released cosigner,
-# in one image. build.sh packs the one and fetches the other, as pins.env pins them; compose.yml is
+# in one image. Two bundles: one any software passkey can use, and one for the app (ENCLAVE_BUNDLE=app). build.sh packs the one and fetches the other, as pins.env pins them; compose.yml is
 # how it runs, and says why it runs that way.
 FROM docker:27.5.1-cli AS docker
 
@@ -10,6 +10,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=docker /usr/local/bin/docker /usr/local/bin/docker
 COPY bundle /enclave
+COPY bundle-app /enclave-app
 COPY cosigner.wasm /cosigner/cosigner.wasm
 COPY entrypoint.sh /entrypoint.sh
 
